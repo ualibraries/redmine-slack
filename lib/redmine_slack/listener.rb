@@ -46,6 +46,7 @@ class SlackListener < Redmine::Hook::Listener
 
 		return unless channel and url and Setting.plugin_redmine_slack[:post_updates] == '1'
 		return if issue.is_private?
+		return if journal.private_notes?
 
 		msg = "[#{escape issue.project}] #{escape journal.user.to_s} updated <#{object_url issue}|#{escape issue}>#{mentions journal.notes}"
 
@@ -155,8 +156,8 @@ class SlackListener < Redmine::Hook::Listener
 			client.ssl_config.ssl_version = :auto
 			client.post_async url, {:payload => params.to_json}
 		rescue Exception => e
-			logger.warn("cannot connect to #{url}")
-			logger.warn(e)
+			Rails.logger.warn("cannot connect to #{url}")
+			Rails.logger.warn(e)
 		end
 	end
 
@@ -270,6 +271,10 @@ private
 	end
 
 	def extract_usernames text = ''
+		if text.nil?
+			text = ''
+		end
+
 		# slack usernames may only contain lowercase letters, numbers,
 		# dashes and underscores and must start with a letter or number.
 		text.scan(/@[a-z0-9][a-z0-9_\-]*/).uniq
